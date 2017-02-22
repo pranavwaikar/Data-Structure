@@ -173,7 +173,6 @@ result_t save_graph(graph_t *g,char *file_name)
 //construct graph
 graph_t *construct_graph(char *file_name)
 {
-printf("\nInside construct_graph\n");
 	int fd,i;
 	graph_t *g=NULL;
 	graph_capsule_t *caps=NULL;
