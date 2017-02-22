@@ -1,0 +1,377 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "graph.h"
+
+
+
+//creates a graph and returns the handle
+graph_t * create_graph()
+{
+	graph_t *g=NULL;
+	g=(graph_t *)xcalloc(1,sizeof(graph_t));
+	if(g==NULL)
+	{
+		fprintf(stderr, "\nfailed to create graph.\n");
+		exit(EXIT_FAILURE);
+	}
+	g->nr_of_vertices=0;
+	g->nr_of_edges=0;
+
+	g->head=NULL;
+	g->head=get_vert_node(-1);
+	if(g->head==NULL)
+	{
+		fprintf(stderr, "\nfailed to create vertex head.\n");
+		exit(EXIT_FAILURE);
+	}
+	return (g);
+
+}
+
+//add vertex and returns the handle
+vertex_t add_vertex(graph_t *g)
+{
+	int vert_number;
+	vert_node_t *vert=NULL;
+
+	vert_number=g->nr_of_vertices + 1;
+	vert=add_vert_node(g,vert_number);
+	if(vert==NULL)
+	{
+		fprintf(stderr, "\nfailed to add vertex node.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	g->nr_of_vertices = g->nr_of_vertices +1;
+
+	return (vert_number);
+}
+
+//add the edge and retun SUCCESS or FAILURE
+result_t add_edge(graph_t *g,vertex_t v1,vertex_t v2)
+{
+	vert_node_t *v1_node=NULL,*v2_node=NULL;
+	adj_node_t *v1_adj=NULL,*v2_adj=NULL;
+
+	v1_node=search_vert_node(g,v1);
+	v2_node=search_vert_node(g,v2);
+	if (v1_node==NULL || v2_node==NULL)
+	{
+		fprintf(stderr, "\nVertex not found!\n");
+	}
+
+	v1_adj=add_adj_node(g,v2_node,v1);
+	v2_adj=add_adj_node(g,v1_node,v2);
+
+	g->nr_of_edges= g->nr_of_edges + 1;
+
+	
+	return (SUCCESS);
+}
+
+//prints the graph
+result_t print_graph(graph_t *g)
+{
+	vert_node_t *vert_head=g->head,*vert_run=vert_head->next;
+	adj_node_t  *adj_head,*adj_run;
+
+	while(vert_run != vert_head)
+	{
+		adj_head=vert_run->head;
+		adj_run=adj_head->next;
+		printf("%d",vert_run->vertex);
+		while(adj_run !=adj_head)
+		{
+			printf("<--->%d",adj_run->vertex);
+			adj_run=adj_run->next;
+		}
+		vert_run=vert_run->next;
+		printf("\n");
+	}
+
+	return (SUCCESS);
+}
+
+//delete the edge
+result_t delete_edge(graph_t *g,vertex_t v1,vertex_t v2)
+{
+	result_t chk;
+	chk=remove_adj_node(g,v1,v2);
+	if(chk==FAILURE)
+	{
+		fprintf(stderr, "\nfailed to delete edge\n" );
+		exit(EXIT_FAILURE);
+	}
+	g->nr_of_edges=g->nr_of_edges-1;
+
+	return (SUCCESS);
+}
+
+//delete the vertex
+result_t delete_vertex(graph_t *g,vertex_t v1)
+{
+	result_t chk;
+	chk=remove_vert_node(g,v1);
+
+	if(chk==FAILURE)
+	{
+		fprintf(stderr, "\nfailed to delete vertex\n" );
+		exit(EXIT_FAILURE);
+	}
+	g->nr_of_vertices=g->nr_of_vertices-1;
+
+	return (SUCCESS);
+
+}
+
+//deleting total graph
+result_t delete_graph(graph_t **g)
+{
+	vert_node_t *headv=(*g)->head,*run=headv->next;
+
+	while(run!=headv)
+	{
+		delete_vertex(*g,run->vertex);
+		run=run->next;
+	}
+	free(headv);
+	free(*g);
+	*g=NULL;
+
+	return (SUCCESS);
+}
+
+//list manipulation routines
+
+
+//remove the vertex and also delete all associated edges from both list of both vertex
+result_t  remove_vert_node(graph_t *g,vertex_t v1)
+{
+	result_t chk;
+	vert_node_t *vert;
+	adj_node_t *heada,*run;
+
+	vert=search_vert_node(g,v1);
+	heada=vert->head;
+	run=heada->next;
+	while(run!=heada)
+	{
+		//###########how to change it to internal func.managing nr_of_edges??#####
+		delete_edge(g,v1,run->vertex);	
+		run=run->next;
+	}
+	free(heada);
+
+	chk=remove_link_vert(vert->prev,vert,vert->next);
+	if(chk==FAILURE)
+	{
+		fprintf(stderr, "\nfailed to delete vertex\n" );
+		exit(EXIT_FAILURE);
+	}
+
+	return (SUCCESS);
+}
+
+//remove the edge from both list of both vertex
+result_t  remove_adj_node(graph_t *g,vertex_t v1,vertex_t v2)
+{
+	adj_node_t *v1_adj=NULL,*v2_adj=NULL;
+	result_t chk1,chk2;
+
+	v1_adj=search_adj_node(g,v1,v2);
+	v2_adj=search_adj_node(g,v2,v1);
+	if(v1_adj==NULL || v2_adj==NULL)
+	{
+		fprintf(stderr, "\nfailed to find vertex node.\n");
+		exit(EXIT_FAILURE);
+	}
+	//for v2 in list of v1
+	chk1=remove_link_adj(v1_adj->prev,v1_adj,v1_adj->next);
+	//for v1 in list of v2
+	chk2=remove_link_adj(v2_adj->prev,v2_adj,v2_adj->next);
+
+	if(chk1==SUCCESS && chk2==SUCCESS)
+		return (SUCCESS);
+	else
+		return (FAILURE);
+}
+
+//returns pointer to vert_node
+vert_node_t *search_vert_node(graph_t *g,vertex_t v1)
+{
+	vert_node_t *head=NULL,*run=NULL;
+
+	head=g->head;
+	run=head->next;
+
+	while(run != head)
+	{
+		if(run->vertex==v1)
+		{
+			return (run);
+		}
+		run=run->next;
+	}
+	return (NULL);
+}
+
+
+//return pointer to adj_node from vertex v1 of the vertex v2
+adj_node_t *search_adj_node(graph_t *g,vertex_t v1,vertex_t v2)
+{
+	vert_node_t *vert=NULL;
+	adj_node_t *head=NULL,*run=NULL;
+
+	vert=search_vert_node(g,v1);
+	if(vert==NULL)
+	{
+		fprintf(stderr, "\nfailed to find vertex node.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	head=vert->head;
+	run=head->next;
+	while(run != head)
+	{
+		if(run->vertex == v2)
+		{
+			return (run);
+		}
+		run=run->next;
+	}
+	return (NULL);
+}
+
+//create and insert new vertex into list and return its pointer
+vert_node_t *add_vert_node(graph_t *g,vertex_t v1)
+{
+	vert_node_t *head=g->head,*last=head->prev;
+	result_t chk;
+	vert_node_t *new=get_vert_node(v1);
+
+	chk=add_link_vert(last,new,head);
+	if (chk==SUCCESS)
+		return (new);
+	else
+		return (NULL);
+
+}
+
+//create new adj_node in list of vertex v1 and returns the pointer
+adj_node_t *add_adj_node(graph_t *g,vert_node_t *v1,vertex_t v2)
+{
+	adj_node_t *head=v1->head,*last=head->prev;
+	result_t chk;
+	adj_node_t *new=get_adj_node(v2);
+
+	chk=add_link_adj(last,new,head);
+	if (chk==SUCCESS)
+		return (new);
+	else
+		return (NULL);
+}
+
+
+
+//node init routines
+
+//create vertex node with default values
+vert_node_t *get_vert_node(vertex_t v1)
+{
+	vert_node_t *temp=NULL;
+	temp=(vert_node_t *)xcalloc(1,sizeof(vert_node_t));
+	if(temp==NULL)
+	{
+		fprintf(stderr, "\nfailed to create vertex node.\n");
+		exit(EXIT_FAILURE);
+	}
+	temp->vertex=v1;
+	temp->next=temp;
+	temp->prev=temp;
+	temp->head=NULL;
+	temp->head=get_adj_node(-1);
+	if(temp->head==NULL)
+	{
+		fprintf(stderr, "\nfailed to create adjecent node.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return (temp);
+}
+
+//create adj_node  with default values
+adj_node_t *get_adj_node(vertex_t v1)
+{
+	adj_node_t *temp=NULL;
+	temp=(adj_node_t *)xcalloc(1,sizeof(adj_node_t));
+	if(temp==NULL)
+	{
+		fprintf(stderr, "\nfailed to create adjecent node.\n");
+		exit(EXIT_FAILURE);
+	}
+	temp->vertex=v1;
+	temp->prev=temp;
+	temp->next=temp;
+
+	return (temp);
+}
+
+//internal link management routines
+
+//insert vertex into list
+result_t add_link_vert(vert_node_t *beg,vert_node_t *mid,vert_node_t *end)
+{
+	mid->next=end;
+	mid->prev=beg;
+	beg->next=mid;
+	end->prev=mid;
+
+	return (SUCCESS);
+}
+
+//insert edge into adj_list
+result_t add_link_adj(adj_node_t *beg,adj_node_t *mid,adj_node_t *end)
+{
+	mid->next=end;
+	mid->prev=beg;
+	beg->next=mid;
+	end->prev=mid;
+
+	return (SUCCESS);
+}
+
+//remove edge from adj_list
+result_t remove_link_adj(adj_node_t *beg,adj_node_t *mid,adj_node_t *end)
+{
+	beg->next=end;
+	end->prev=beg;
+	free(mid);
+
+	return (SUCCESS);
+}
+
+//remove vertex from list
+result_t remove_link_vert(vert_node_t *beg,vert_node_t *mid,vert_node_t *end)
+{
+	beg->next=end;
+	end->prev=beg;
+	free(mid);
+
+	return (SUCCESS);
+}
+
+//memory allocation routines
+
+//initialize and check allocated memory
+void *xcalloc(int nr_of_elements,int size_per_element)
+{
+	void *temp=NULL;
+	temp=calloc(nr_of_elements,size_per_element);
+	if(temp==NULL)
+	{
+		fprintf(stderr, "\ncalloc failed.\n");
+		exit(EXIT_FAILURE);
+	}
+	return temp;
+}
