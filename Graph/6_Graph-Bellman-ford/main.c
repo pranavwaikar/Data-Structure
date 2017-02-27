@@ -1,141 +1,81 @@
-
-#ifndef _GRAPH_H
-#define _GRAPH_H
-
+#include "graph.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#define TRUE         0
-#define FALSE        1 
-#define SUCCESS      0
-#define FAILURE     -1
-#define END_OF_FILE -2
-#define END_OF_LIST -1
-#define ALLOWED      2
-#define NOT_ALLOWED  3
-#define EXISTS       4
-#define WHITE        5
-#define GREY         6
-#define BLACK        7
-
-typedef int color_t;
-typedef double cost_t;
-typedef int vertex_t;
-
-struct adj_node
+int main(int argc, char const *argv[])
 {
-	vertex_t vertex;
-	color_t  color;
-	vertex_t pread;
-	cost_t weight;
-	struct adj_node *prev,*next;
-};
+	vertex_t *ver;
+	int i;
+	graph_t *gra=create_graph();
+	graph_t *gra2;
 
-typedef struct adj_node adj_node_t;
+	vertex_t v1,v2,v3;
 
-struct vert_node
-{
-	vertex_t vertex;
-	color_t color;
-	vertex_t pread;
-	cost_t distance;
-	adj_node_t *head;
-	struct vert_node *next,*prev;
-};
+	v1=add_vertex(gra);
+	v2=add_vertex(gra);
+	v3=add_vertex(gra);
 
-typedef struct vert_node vert_node_t;
+	add_edge(gra,v1,v2);
+	add_edge(gra,v1,v3);
+	add_edge(gra,v2,v3);
 
-struct graph
-{
-	vert_node_t *head;
-	int nr_of_vertices;
-	int nr_of_edges;
-};
+	print_graph(gra);
+	save_graph(gra,"mygraph.graph");
+	printf("graph saved \n");
+	
+	printf("\ngraph constructing \n");
+	gra2=construct_graph("mygraph.graph");
+	print_graph(gra2);
+	
+	printf("\ntraverse_bfs=\n");
+	ver=traverse_bfs(gra);
+	for(i=0;i<length(gra);i++)
+	{
+		printf("%d  ",*(ver+i));
+	}
+	printf("\n");
 
-typedef struct graph graph_t;
-typedef graph_t queue_t;
-
-typedef int result_t;
-
-//struct for saving in to the files
-struct graph_node
-{
-	vertex_t vertex;
-};
-typedef struct graph_node graph_node_t;
-
-struct graph_capsule
-{
-	int nr_of_vertices;
-	int nr_of_edges;
-};
-typedef struct graph_capsule graph_capsule_t;
+	printf("\ntraverse_dfs=\n");
+	ver=traverse_dfs(gra);
+	
+	for(i=0;i<length(gra);i++)
+	{
+		printf("%d  ",*(ver+i));
+	}
+	printf("\n");
 
 
-//Export routines
-graph_t * create_graph();
-vertex_t add_vertex(graph_t *g);
-result_t add_edge(graph_t *g,vertex_t v1,vertex_t v2);
-result_t delete_vertex(graph_t *g,vertex_t v1);
-result_t delete_edge(graph_t *g,vertex_t v1,vertex_t v2);
-result_t print_graph(graph_t *g);
-result_t delete_graph(graph_t **g);
-result_t save_graph(graph_t *g,char *file_name);
-graph_t *construct_graph(char *file_name);
-vertex_t *traverse_bfs(graph_t *g);
-vertex_t *traverse_dfs(graph_t *g);
-int length(graph_t *g);
-vertex_t *shortest_path(graph_t *g,vertex_t v_source,vertex_t v_dest);
-result_t add_weight(graph_t *g,vertex_t v1,vertex_t v2,cost_t weight);
-int shortest_path_length(vertex_t *v1);
-vertex_t *bellman_ford_path(graph_t *g,vertex_t v_source,vertex_t v_dest);
+	add_weight(gra,v1,v2,3);
+	add_weight(gra,v1,v3,2);
+	add_weight(gra,v2,v3,5);
 
+	ver=shortest_path(gra,v1,v3);
+	printf("\nshortest_path=\n");
+	for(i=0;i<shortest_path_length(ver);i++)
+	{
+		printf("%d  ",*(ver+i));
+	}
+	
+	ver=bellman_ford_path(gra,v1,v3);
+	printf("\nbellman ford shortest_path=\n");
+	for(i=0;i<shortest_path_length(ver);i++)
+	{
+		printf("%d  ",*(ver+i));
+	}
+	
+	delete_edge(gra,v1,v2);
+	printf("\ndelete_edge\n");
+	print_graph(gra);
 
-//internal routines
-vertex_t get_next_vertex_number();
-vert_node_t *search_vert_node(graph_t *g,vertex_t v1);
-adj_node_t *search_adj_node(graph_t *g,vertex_t v1,vertex_t v2);
-vert_node_t *add_vert_node(graph_t *g,vertex_t v1);
-adj_node_t *add_adj_node(graph_t *g,vert_node_t *v1,vertex_t v2);
-result_t  remove_adj_node(graph_t *g,vertex_t v1,vertex_t v2);
-result_t  remove_vert_node(graph_t *g,vertex_t v1);
-result_t validate_insertion(graph_t *g,vertex_t v1,vertex_t v2);
+	delete_vertex(gra,v2);
+	printf("\ndelete_v2\n");
+	print_graph(gra);
 
-//internal link management routines
-result_t add_link_vert(vert_node_t *beg,vert_node_t *mid,vert_node_t *end);
-result_t add_link_adj(adj_node_t *beg,adj_node_t *mid,adj_node_t *end);
-result_t remove_link_adj(adj_node_t *beg,adj_node_t *mid,adj_node_t *end);
-result_t remove_link_vert(vert_node_t *beg,vert_node_t *mid,vert_node_t *end);
-//node init routines
-vert_node_t *get_vert_node(vertex_t v1);
-adj_node_t *get_adj_node(vertex_t v1);
-//memory allocation routines
-void *xcalloc(int nr_of_elements,int size_per_element);
-//internal save routines
-int create_capsule(graph_t *g,char *file_name);
-result_t save_all_nodes(graph_t *g,int fd);
-//internal graph construct routines
-int get_file_handle(char *file_name);
-graph_capsule_t *get_capsule(int fd);
-vertex_t get_graph_vertex(int fd);
-//internal routines for traverse_bfs
-result_t reset_graph(graph_t *g);
-result_t set_node(vert_node_t *vert,vert_node_t *pvert,color_t color);
-//internal queue routines
-queue_t *create_queue();
-result_t enqueue(queue_t *q,vert_node_t *v1);
-vertex_t dequeue(queue_t *q);
-result_t is_empty(queue_t *q);
-//internal DFS routines
-result_t dfs_visit(graph_t *g,vert_node_t *req_node,vertex_t *v,int i);
-//internal shortest path algorithm
-result_t add_weight(graph_t *g,vertex_t v1,vertex_t v2,cost_t weight);
-vertex_t *get_shortest_path(graph_t *g,vertex_t v_source,vertex_t v_dest);
-result_t relax(vert_node_t *req_node,vert_node_t *node,cost_t weight);
-vert_node_t *extract_min(queue_t *q,graph_t *g);
-queue_t *push_all_vertex_in_queue(graph_t *g);
-result_t init_source(graph_t *g,vertex_t v_source);
+	printf("\nGRAPH delete\n");
+	delete_graph(&gra);
+	
+	free(ver);
 
-
-#endif
+	return 0;
+}
